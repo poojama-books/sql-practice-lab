@@ -2,10 +2,10 @@
 
 Practice database and solutions for **The SQL Practice Lab** by Pooja M A.
 
-The book has 205 problems built on **NovaCart**, a fictional online store:
+The book has 210 problems built on **NovaCart**, a fictional online store:
 
 - 150 Exercises
-- 22 Analyst Challenges
+- 27 Analyst Challenges
 - 8 Business Cases
 - 10 Debug Challenges
 - 15 Interview Challenges
@@ -19,7 +19,7 @@ Use only the folder for the database you have installed. Each folder works on it
 | Database   | Folder                       | Version needed       |
 |------------|------------------------------|----------------------|
 | PostgreSQL | [`postgresql/`](postgresql/) | PostgreSQL 10 or later |
-| MySQL      | [`mysql/`](mysql/)           | MySQL 8.0 or later   |
+| MySQL      | [`mysql/`](mysql/)           | MySQL 8.0.31 or later |
 | SQL Server | [`sqlserver/`](sqlserver/)   | SQL Server 2016 or later |
 
 ## What is in each folder

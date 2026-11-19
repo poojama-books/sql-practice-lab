@@ -210,3 +210,89 @@ ORDER BY
     order_year,
     order_month;
 
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 15 - Year-over-Year Revenue by Month
+-- Check Your Result: 21 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH monthly_revenue AS (
+    SELECT
+        YEAR(order_date) AS order_year,
+        MONTH(order_date) AS order_month,
+        SUM(total_amount) AS revenue
+    FROM orders
+    WHERE status = 'Completed'
+    GROUP BY
+        YEAR(order_date),
+        MONTH(order_date)
+),
+compared AS (
+    SELECT
+        order_year,
+        order_month,
+        revenue,
+        LAG(revenue) OVER (
+            PARTITION BY order_month
+            ORDER BY order_year
+        ) AS revenue_last_year
+    FROM monthly_revenue
+)
+SELECT
+    order_year,
+    order_month,
+    revenue,
+    revenue_last_year,
+    ROUND(
+        100.0 * (revenue - revenue_last_year)
+        / revenue_last_year,
+        1
+    ) AS yoy_growth_pct
+FROM compared
+WHERE revenue_last_year IS NOT NULL
+ORDER BY order_year, order_month;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 16 - Category Revenue: 2025 Compared with 2024
+-- Check Your Result: 7 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH category_revenue AS (
+    SELECT
+        c.category_name,
+        SUM(CASE
+                WHEN o.order_date >= '2024-01-01'
+                 AND o.order_date < '2025-01-01'
+                THEN oi.quantity * oi.unit_price
+                ELSE 0
+            END) AS revenue_2024,
+        SUM(CASE
+                WHEN o.order_date >= '2025-01-01'
+                 AND o.order_date < '2026-01-01'
+                THEN oi.quantity * oi.unit_price
+                ELSE 0
+            END) AS revenue_2025
+    FROM orders AS o
+    INNER JOIN order_items AS oi
+        ON o.order_id = oi.order_id
+    INNER JOIN products AS p
+        ON oi.product_id = p.product_id
+    INNER JOIN categories AS c
+        ON p.category_id = c.category_id
+    WHERE o.status = 'Completed'
+      AND o.order_date >= '2024-01-01'
+      AND o.order_date < '2026-01-01'
+    GROUP BY c.category_name
+)
+SELECT
+    category_name,
+    revenue_2024,
+    revenue_2025,
+    revenue_2025 - revenue_2024 AS revenue_change,
+    ROUND(
+        100.0 * (revenue_2025 - revenue_2024)
+        / NULLIF(revenue_2024, 0),
+        1
+    ) AS yoy_growth_pct
+FROM category_revenue
+ORDER BY revenue_2025 DESC;
+

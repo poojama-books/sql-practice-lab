@@ -9,7 +9,7 @@
 -- ======================================================================
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 15 - Employee Hiring Period Distribution
+-- Analyst Challenge 17 - Employee Hiring Period Distribution
 -- Check Your Result: 3 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -49,7 +49,7 @@ ORDER BY
     END;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 16 - Build a Unified Activity Log
+-- Analyst Challenge 18 - Build a Unified Activity Log
 -- Check Your Result: 463 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -95,7 +95,63 @@ FROM unified_activity
 ORDER BY event_date, event_type, event_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 17 - Audit Order Totals Against Line-Item Totals
+-- Analyst Challenge 19 - Customers Who Bought in Both 2025 and 2026
+-- Check Your Result: 15 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH returning_customers AS (
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2025-01-01'
+      AND order_date < '2026-01-01'
+
+    INTERSECT
+
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2026-01-01'
+      AND order_date < '2027-01-01'
+)
+SELECT
+    c.customer_id,
+    c.customer_name
+FROM returning_customers AS r
+INNER JOIN customers AS c
+    ON r.customer_id = c.customer_id
+ORDER BY c.customer_id;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 20 - Customers Who Did Not Return in 2025
+-- Check Your Result: 2 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH lapsed_customers AS (
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2024-01-01'
+      AND order_date < '2025-01-01'
+
+    EXCEPT
+
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2025-01-01'
+      AND order_date < '2026-01-01'
+)
+SELECT
+    c.customer_id,
+    c.customer_name
+FROM lapsed_customers AS l
+INNER JOIN customers AS c
+    ON l.customer_id = c.customer_id
+ORDER BY c.customer_id;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 21 - Audit Order Totals Against Line-Item Totals
 -- Check Your Result: 207 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -128,7 +184,7 @@ LEFT JOIN item_totals AS it
 ORDER BY o.order_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 18 - Manager Workload and Team Structure
+-- Analyst Challenge 22 - Manager Workload and Team Structure
 -- Check Your Result: 6 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -152,7 +208,43 @@ ORDER BY
     manager_name;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 19 - Compare Transaction Prices with Catalogue Prices
+-- Analyst Challenge 23 - Full Reporting Line
+-- Check Your Result: 16 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH RECURSIVE reporting_line AS (
+    SELECT
+        employee_id,
+        employee_name,
+        manager_id,
+        1 AS hierarchy_level,
+        CAST(employee_name AS CHAR(500))
+            AS reporting_path
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        e.employee_id,
+        e.employee_name,
+        e.manager_id,
+        r.hierarchy_level + 1,
+        CONCAT(r.reporting_path, ' > ', e.employee_name)
+    FROM employees AS e
+    INNER JOIN reporting_line AS r
+        ON e.manager_id = r.employee_id
+)
+SELECT
+    employee_id,
+    employee_name,
+    hierarchy_level,
+    reporting_path
+FROM reporting_line
+ORDER BY reporting_path;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 24 - Compare Transaction Prices with Catalogue Prices
 -- Check Your Result: 384 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -179,7 +271,7 @@ ORDER BY
     oi.order_item_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 20 - Website Engagement Coverage by Signup Year
+-- Analyst Challenge 25 - Website Engagement Coverage by Signup Year
 -- Check Your Result: 3 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -218,7 +310,7 @@ GROUP BY signup_year
 ORDER BY signup_year;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 21 - Detect Gaps in the Paid-Order Sequence
+-- Analyst Challenge 26 - Detect Gaps in the Paid-Order Sequence
 -- Check Your Result: 22 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -243,7 +335,7 @@ WHERE previous_paid_order_id IS NOT NULL
 ORDER BY previous_paid_order_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 22 - Build a Consolidated Data Quality Report
+-- Analyst Challenge 27 - Build a Consolidated Data Quality Report
 -- Check Your Result: 1 row
 -- ----------------------------------------------------------------------
 -- Solution

@@ -2584,12 +2584,98 @@ SELECT
 FROM comparison
 ORDER BY order_year, order_month;
 
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 15 - Year-over-Year Revenue by Month
+-- Check Your Result: 21 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH monthly_revenue AS (
+    SELECT
+        EXTRACT(YEAR FROM order_date) AS order_year,
+        EXTRACT(MONTH FROM order_date) AS order_month,
+        SUM(total_amount) AS revenue
+    FROM orders
+    WHERE status = 'Completed'
+    GROUP BY
+        EXTRACT(YEAR FROM order_date),
+        EXTRACT(MONTH FROM order_date)
+),
+compared AS (
+    SELECT
+        order_year,
+        order_month,
+        revenue,
+        LAG(revenue) OVER (
+            PARTITION BY order_month
+            ORDER BY order_year
+        ) AS revenue_last_year
+    FROM monthly_revenue
+)
+SELECT
+    order_year,
+    order_month,
+    revenue,
+    revenue_last_year,
+    ROUND(
+        100.0 * (revenue - revenue_last_year)
+        / revenue_last_year,
+        1
+    ) AS yoy_growth_pct
+FROM compared
+WHERE revenue_last_year IS NOT NULL
+ORDER BY order_year, order_month;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 16 - Category Revenue: 2025 Compared with 2024
+-- Check Your Result: 7 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH category_revenue AS (
+    SELECT
+        c.category_name,
+        SUM(CASE
+                WHEN o.order_date >= '2024-01-01'
+                 AND o.order_date < '2025-01-01'
+                THEN oi.quantity * oi.unit_price
+                ELSE 0
+            END) AS revenue_2024,
+        SUM(CASE
+                WHEN o.order_date >= '2025-01-01'
+                 AND o.order_date < '2026-01-01'
+                THEN oi.quantity * oi.unit_price
+                ELSE 0
+            END) AS revenue_2025
+    FROM orders AS o
+    INNER JOIN order_items AS oi
+        ON o.order_id = oi.order_id
+    INNER JOIN products AS p
+        ON oi.product_id = p.product_id
+    INNER JOIN categories AS c
+        ON p.category_id = c.category_id
+    WHERE o.status = 'Completed'
+      AND o.order_date >= '2024-01-01'
+      AND o.order_date < '2026-01-01'
+    GROUP BY c.category_name
+)
+SELECT
+    category_name,
+    revenue_2024,
+    revenue_2025,
+    revenue_2025 - revenue_2024 AS revenue_change,
+    ROUND(
+        100.0 * (revenue_2025 - revenue_2024)
+        / NULLIF(revenue_2024, 0),
+        1
+    ) AS yoy_growth_pct
+FROM category_revenue
+ORDER BY revenue_2025 DESC;
+
 -- ======================================================================
 -- CHAPTER 24 - Apply SQL to Real-World Data Problems
 -- ======================================================================
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 15 - Employee Hiring Period Distribution
+-- Analyst Challenge 17 - Employee Hiring Period Distribution
 -- Check Your Result: 3 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2629,7 +2715,7 @@ ORDER BY
     END;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 16 - Build a Unified Activity Log
+-- Analyst Challenge 18 - Build a Unified Activity Log
 -- Check Your Result: 463 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2675,7 +2761,63 @@ FROM unified_activity
 ORDER BY event_date, event_type, event_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 17 - Audit Order Totals Against Line-Item Totals
+-- Analyst Challenge 19 - Customers Who Bought in Both 2025 and 2026
+-- Check Your Result: 15 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH returning_customers AS (
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2025-01-01'
+      AND order_date < '2026-01-01'
+
+    INTERSECT
+
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2026-01-01'
+      AND order_date < '2027-01-01'
+)
+SELECT
+    c.customer_id,
+    c.customer_name
+FROM returning_customers AS r
+INNER JOIN customers AS c
+    ON r.customer_id = c.customer_id
+ORDER BY c.customer_id;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 20 - Customers Who Did Not Return in 2025
+-- Check Your Result: 2 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH lapsed_customers AS (
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2024-01-01'
+      AND order_date < '2025-01-01'
+
+    EXCEPT
+
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'Completed'
+      AND order_date >= '2025-01-01'
+      AND order_date < '2026-01-01'
+)
+SELECT
+    c.customer_id,
+    c.customer_name
+FROM lapsed_customers AS l
+INNER JOIN customers AS c
+    ON l.customer_id = c.customer_id
+ORDER BY c.customer_id;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 21 - Audit Order Totals Against Line-Item Totals
 -- Check Your Result: 207 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2708,7 +2850,7 @@ LEFT JOIN item_totals AS it
 ORDER BY o.order_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 18 - Manager Workload and Team Structure
+-- Analyst Challenge 22 - Manager Workload and Team Structure
 -- Check Your Result: 6 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2732,7 +2874,43 @@ ORDER BY
     manager_name;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 19 - Compare Transaction Prices with Catalogue Prices
+-- Analyst Challenge 23 - Full Reporting Line
+-- Check Your Result: 16 rows
+-- ----------------------------------------------------------------------
+-- Solution
+WITH RECURSIVE reporting_line AS (
+    SELECT
+        employee_id,
+        employee_name,
+        manager_id,
+        1 AS hierarchy_level,
+        CAST(employee_name AS CHAR(500))
+            AS reporting_path
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        e.employee_id,
+        e.employee_name,
+        e.manager_id,
+        r.hierarchy_level + 1,
+        CONCAT(r.reporting_path, ' > ', e.employee_name)
+    FROM employees AS e
+    INNER JOIN reporting_line AS r
+        ON e.manager_id = r.employee_id
+)
+SELECT
+    employee_id,
+    employee_name,
+    hierarchy_level,
+    reporting_path
+FROM reporting_line
+ORDER BY reporting_path;
+
+-- ----------------------------------------------------------------------
+-- Analyst Challenge 24 - Compare Transaction Prices with Catalogue Prices
 -- Check Your Result: 384 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2759,7 +2937,7 @@ ORDER BY
     oi.order_item_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 20 - Website Engagement Coverage by Signup Year
+-- Analyst Challenge 25 - Website Engagement Coverage by Signup Year
 -- Check Your Result: 3 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2798,7 +2976,7 @@ GROUP BY signup_year
 ORDER BY signup_year;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 21 - Detect Gaps in the Paid-Order Sequence
+-- Analyst Challenge 26 - Detect Gaps in the Paid-Order Sequence
 -- Check Your Result: 22 rows
 -- ----------------------------------------------------------------------
 -- Solution
@@ -2823,7 +3001,7 @@ WHERE previous_paid_order_id IS NOT NULL
 ORDER BY previous_paid_order_id;
 
 -- ----------------------------------------------------------------------
--- Analyst Challenge 22 - Build a Consolidated Data Quality Report
+-- Analyst Challenge 27 - Build a Consolidated Data Quality Report
 -- Check Your Result: 1 row
 -- ----------------------------------------------------------------------
 -- Solution

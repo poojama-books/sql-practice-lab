@@ -1,6 +1,6 @@
 # MySQL files
 
-Everything in this folder is written for **MySQL 8.0 or later** and runs as-is. Earlier versions do not support the CTEs and window functions used in later chapters.
+Everything in this folder is written for **MySQL 8.0.31 or later** and runs as-is. Earlier versions do not support the CTEs and window functions used in later chapters, or the INTERSECT and EXCEPT operators used in Chapter 24.
 
 | File                   | What it does                                   |
 |------------------------|------------------------------------------------|
